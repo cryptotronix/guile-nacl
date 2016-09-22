@@ -1,0 +1,17 @@
+Guile-nacl NEWS
+
+
+Guile-nacl wraps the libsodium library for Guile Scheme.
+
+
+guile-nacl 0.0.1 -- 2016-09-16
+================================
+
+* Initial release.
+
+
+Copyright (C) 2016 Cryptotronix, LLC <jbd@cryptotronix.com>
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice
+and this notice are preserved.

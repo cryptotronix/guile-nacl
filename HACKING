@@ -1,0 +1,8 @@
+Hacking Guile-nacl
+=================
+
+git clone git://.../guile-nacl.git
+cd guile-nacl
+./autogen.sh && ./configure --prefix=/opt/guile-nacl && make && sudo make install
+
+See the TODO file for pending tasks.
