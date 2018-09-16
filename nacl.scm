@@ -1,5 +1,5 @@
-;; guile-zmq
-;; Copyright (C) 2011,2012 Andy Wingo <wingo at pobox dot com>
+;; guile-nacl
+;; Copyright (C) 2018 Cryptotornix
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU Lesser General Public License as
@@ -30,15 +30,10 @@
   #:use-module (nacl config)
   #:use-module (rnrs bytevectors)
   #:export (nacl-version
-
             nacl-init
-            nacl-rand-buf))
+            nacl-rand-buf
+            nacl-decode-base64
+            nacl-encode-base64
+            nacl-hash-sha256))
 
-;; This will export many things
 (dynamic-call "scm_init_nacl" (dynamic-link *nacl-lib-path*))
-
-
-#;
-(if (not (member *zmq-documentation-path* documentation-files))
-    (set! documentation-files (cons *zmq-documentation-path*
-                                    documentation-files)))

@@ -1,5 +1,5 @@
 /* guile-nacl
- * Copyright (C) 2016 Josh Datko <jbd@cryptotronix.com>
+ * Copyright (C) 2016-2018 Cryptotronix <jbd@cryptotronix.com>
  *
  * guile-nacl.h:
  *
@@ -23,9 +23,6 @@
 
 #ifndef __GUILE_NACL_H__
 #define __GUILE_NACL_H__
-
-#include <sodium.h>
-#include <libguile.h>
 
 
 void scm_init_nacl (void);

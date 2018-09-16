@@ -1,7 +1,7 @@
-/* guile-zmq
- * Copyright (C) 2011, 2012 Andy Wingo <wingo@pobox.com>
+/* guile-nacl
+ * Copyright (C) 2018 Cryptotronix
  *
- * guile-zmq.c: 0MQ for Guile
+ * guile-nacl.c: NaCl for Guile
  *
  * This library is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
@@ -22,347 +22,18 @@
  */
 
 #include <libguile.h>
-
 #include <sodium.h>
 #include <assert.h>
 
 #include "guile-nacl.h"
 
 
-/* static scm_t_bits scm_tc16_zmq_context; */
-/* static scm_t_bits scm_tc16_zmq_socket; */
-
-/* /\* Map sockets to contexts, to keep contexts alive.  Also, allows atexit() to */
-/*    close sockets and terminate contexts, as is done with ports.  *\/ */
-/* static SCM all_sockets = SCM_BOOL_F; */
-/* static scm_i_pthread_mutex_t all_sockets_lock = SCM_I_PTHREAD_MUTEX_INITIALIZER; */
-
-
-/* static void */
-/* register_socket (SCM sock, SCM ctx) */
-/* { */
-/*   scm_i_pthread_mutex_lock (&all_sockets_lock); */
-/*   scm_hashq_set_x (all_sockets, sock, ctx); */
-/*   scm_i_pthread_mutex_unlock (&all_sockets_lock); */
-/* } */
-
-
-/* static SCM scm_from_zmq_context (void *context) */
-/* { */
-/*   SCM_RETURN_NEWSMOB (scm_tc16_zmq_context, context); */
-/* } */
-
-/* static void* scm_to_zmq_context (SCM obj) */
-/* { */
-/*   void *ret; */
-
-/*   SCM_ASSERT (SCM_SMOB_PREDICATE (scm_tc16_zmq_context, obj), */
-/*               obj, 0, NULL); */
-/*   ret = (void*)SCM_SMOB_DATA (obj); */
-
-/*   if (!ret) */
-/*     scm_misc_error (NULL, "terminated zmq context: ~a", scm_list_1 (obj)); */
-
-/*   return ret; */
-/* } */
-
-/* static size_t scm_zmq_context_free (SCM obj) */
-/* { */
-/*   void *ctx = (void*)SCM_SMOB_DATA (obj); */
-/*   if (ctx) */
-/*     { fprintf (stderr, "terminating %p\n", ctx); */
-/*       SCM_SET_SMOB_DATA (obj, 0); */
-/*       zmq_term (ctx); */
-/*     } */
-/*   return 0; */
-/* } */
-
-
-/* static SCM scm_from_zmq_socket (void *socket) */
-/* { */
-/*   SCM_RETURN_NEWSMOB (scm_tc16_zmq_socket, socket); */
-/* } */
-
-/* static void* scm_to_zmq_socket (SCM obj) */
-/* { */
-/*   void *ret; */
-
-/*   SCM_ASSERT (SCM_SMOB_PREDICATE (scm_tc16_zmq_socket, obj), */
-/*               obj, 0, NULL); */
-/*   ret = (void*)SCM_SMOB_DATA (obj); */
-
-/*   if (!ret) */
-/*     scm_misc_error (NULL, "closed zmq socket: ~a", scm_list_1 (obj)); */
-
-/*   return ret; */
-/* } */
-
-/* static size_t scm_zmq_socket_free (SCM obj) */
-/* { */
-/*   void *sock = (void*)SCM_SMOB_DATA (obj); */
-
-/*   if (sock) */
-/*     { */
-/*       zmq_close (sock); */
-/*       SCM_SET_SMOB_DATA (obj, 0); */
-/*     } */
-
-/*   return 0; */
-/* } */
-
-
-/* static void */
-/* scm_zmq_error (const char *subr) */
-/* { */
-/*   int e = errno; */
-
-/*   scm_error (scm_from_locale_symbol ("zmq-error"), */
-/*              subr, */
-/*              zmq_strerror (e), */
-/*              SCM_EOL, */
-/*              scm_list_1 (scm_from_int (e))); */
-/* } */
-
-
-/* SCM_DEFINE (scm_zmq_version, "zmq-version", 0, 0, 0, */
-/* 	    (void), */
-/* 	    "Retrieves the version of the zmq library.") */
-/* #define FUNC_NAME s_scm_zmq_version */
-/* { */
-/*   int major = 0, minor = 0, patch = 0; */
-/*   zmq_version (&major, &minor, &patch); */
-/*   return scm_values (scm_list_3 (scm_from_int (major), */
-/*                                  scm_from_int (minor), */
-/*                                  scm_from_int (patch))); */
-/* } */
-/* #undef FUNC_NAME */
-
-
-/* SCM_DEFINE (scm_zmq_init, "zmq-init", 0, 1, 0, */
-/*             (SCM io_threads), */
-/*             "Create a ZeroMQ context with @var{io_threads} threads.") */
-/* #define FUNC_NAME s_scm_zmq_init */
-/* { */
-/*   int threads; */
-/*   void *ctx; */
-
-/*   if (SCM_UNBNDP (io_threads)) */
-/*     threads = 1; */
-/*   else */
-/*     threads = scm_to_int (io_threads); */
-
-/*   ctx = zmq_init (threads); */
-/*   if (!ctx) */
-/*     scm_zmq_error (FUNC_NAME); */
-
-/*   return scm_from_zmq_context (ctx); */
-/* } */
-/* #undef FUNC_NAME */
-
-
-/* SCM_DEFINE (scm_zmq_term, "zmq-term", 1, 0, 0, */
-/*             (SCM context), */
-/*             "Terminate the ZeroMQ context @var{context}.") */
-/* #define FUNC_NAME s_scm_zmq_term */
-/* { */
-/*   void *ctx = scm_to_zmq_context (context); */
-
-/*   if (zmq_term (ctx)) */
-/*     scm_zmq_error (FUNC_NAME); */
-/*   SCM_SET_SMOB_DATA (context, NULL); */
-
-/*   return SCM_UNSPECIFIED; */
-/* } */
-/* #undef FUNC_NAME */
-
-
-/* SCM_DEFINE (scm_zmq_socket, "zmq-socket", 2, 0, 0, */
-/* 	    (SCM context, SCM type), */
-/* 	    "Create a new ZeroMQ of type @var{type} within context @var{context}.") */
-/* #define FUNC_NAME s_scm_zmq_socket */
-/* { */
-/*   void *ctx, *s; */
-/*   int typ; */
-/*   SCM ret; */
-
-/*   ctx = scm_to_zmq_context (context); */
-/*   typ = scm_to_int (type); */
-
-/*   s = zmq_socket (ctx, typ); */
-/*   if (!s) */
-/*     scm_zmq_error (FUNC_NAME); */
-
-/*   ret = scm_from_zmq_socket (s); */
-/*   register_socket (ret, context); */
-
-/*   return ret; */
-/* } */
-/* #undef FUNC_NAME */
-
-
-/* SCM_DEFINE (scm_zmq_close, "zmq-close", 1, 0, 0, */
-/* 	    (SCM socket), */
-/* 	    "Close @var{socket}.") */
-/* #define FUNC_NAME s_scm_zmq_close */
-/* { */
-/*   void *s; */
-
-/*   s = scm_to_zmq_socket (socket); */
-
-/*   if (zmq_close (s)) */
-/*     scm_zmq_error (FUNC_NAME); */
-/*   SCM_SET_SMOB_DATA (socket, NULL); */
-
-/*   return SCM_UNSPECIFIED; */
-/* } */
-/* #undef FUNC_NAME */
-
-
-/* SCM_DEFINE (scm_zmq_setsockopt, "%zmq-setsockopt", 3, 0, 0, */
-/* 	    (SCM socket, SCM opt, SCM val), */
-/* 	    "Set @var{opt} to @var{val} on @var{socket}.") */
-/* #define FUNC_NAME s_scm_zmq_setsockopt */
-/* { */
-/*   void *s; */
-/*   int o; */
-
-/*   s = scm_to_zmq_socket (socket); */
-/*   o = scm_to_int (opt); */
-/*   SCM_VALIDATE_BYTEVECTOR (3, val); */
-
-/*   if (zmq_setsockopt (s, o, SCM_BYTEVECTOR_CONTENTS (val), */
-/*                       SCM_BYTEVECTOR_LENGTH (val))) */
-/*     scm_zmq_error (FUNC_NAME); */
-
-/*   return SCM_UNSPECIFIED; */
-/* } */
-/* #undef FUNC_NAME */
-
-
-/* SCM_DEFINE (scm_zmq_getsockopt, "%zmq-getsockopt", 3, 0, 0, */
-/* 	    (SCM socket, SCM opt, SCM val), */
-/* 	    "Get @var{opt} of @var{socket} into @var{val}.") */
-/* #define FUNC_NAME s_scm_zmq_getsockopt */
-/* { */
-/*   void *s; */
-/*   int o; */
-/*   size_t len; */
-
-/*   s = scm_to_zmq_socket (socket); */
-/*   o = scm_to_int (opt); */
-/*   SCM_VALIDATE_BYTEVECTOR (3, val); */
-/*   len = SCM_BYTEVECTOR_LENGTH (val); */
-
-/*   if (zmq_getsockopt (s, o, SCM_BYTEVECTOR_CONTENTS (val), &len)) */
-/*     scm_zmq_error (FUNC_NAME); */
-
-/*   if (len != SCM_BYTEVECTOR_LENGTH (val)) */
-/*     scm_misc_error (FUNC_NAME, "bad length of socket option: ~a", */
-/*                     scm_from_size_t (len)); */
-
-/*   return SCM_UNSPECIFIED; */
-/* } */
-/* #undef FUNC_NAME */
-
-
-/* SCM_DEFINE (scm_zmq_bind, "zmq-bind", 2, 0, 0, */
-/* 	    (SCM socket, SCM addr), */
-/* 	    "Bind @var{socket} to @var{addr}.") */
-/* #define FUNC_NAME s_scm_zmq_bind */
-/* { */
-/*   void *s; */
-/*   char *caddr; */
-
-/*   scm_dynwind_begin (0); */
-
-/*   s = scm_to_zmq_socket (socket); */
-/*   caddr = scm_to_locale_string (addr); */
-
-/*   scm_dynwind_free (caddr); */
-
-/*   if (zmq_bind (s, caddr)) */
-/*     scm_zmq_error (FUNC_NAME); */
-
-/*   scm_dynwind_end (); */
-
-/*   return SCM_UNSPECIFIED; */
-/* } */
-/* #undef FUNC_NAME */
-
-
-/* SCM_DEFINE (scm_zmq_connect, "zmq-connect", 2, 0, 0, */
-/* 	    (SCM socket, SCM addr), */
-/* 	    "Connect to @var{addr} on @var{socket}.") */
-/* #define FUNC_NAME s_scm_zmq_connect */
-/* { */
-/*   void *s; */
-/*   char *caddr; */
-
-/*   scm_dynwind_begin (0); */
-
-/*   s = scm_to_zmq_socket (socket); */
-/*   caddr = scm_to_locale_string (addr); */
-
-/*   scm_dynwind_free (caddr); */
-
-/*   if (zmq_connect (s, caddr)) */
-/*     scm_zmq_error (FUNC_NAME); */
-
-/*   scm_dynwind_end (); */
-
-/*   return SCM_UNSPECIFIED; */
-/* } */
-/* #undef FUNC_NAME */
-
-
-/* SCM_DEFINE (scm_zmq_send, "zmq-send", 2, 1, 0, */
-/* 	    (SCM socket, SCM bv, SCM flags), */
-/* 	    "Send @var{bv} over @var{socket}.") */
-/* #define FUNC_NAME s_scm_zmq_send */
-/* { */
-/*   void *s; */
-/*   int cflags; */
-/*   zmq_msg_t msg; */
-
-/*   s = scm_to_zmq_socket (socket); */
-/*   SCM_VALIDATE_BYTEVECTOR (2, bv); */
-/*   if (SCM_UNBNDP (flags)) */
-/*     cflags = 0; */
-/*   else */
-/*     cflags = scm_to_int (flags); */
-
-/*   if (zmq_msg_init_size (&msg, SCM_BYTEVECTOR_LENGTH (bv))) */
-/*     scm_zmq_error (FUNC_NAME); */
-
-/*   memcpy (zmq_msg_data (&msg), SCM_BYTEVECTOR_CONTENTS (bv), */
-/*           SCM_BYTEVECTOR_LENGTH (bv)); */
-
-/*   if (zmq_send (s, &msg, cflags)) */
-/*     { */
-/*       int errno_save = errno; */
-/*       zmq_msg_close (&msg); */
-/*       errno = errno_save; */
-/*       scm_zmq_error (FUNC_NAME); */
-/*     } */
-
-/*   zmq_msg_close (&msg); */
-
-/*   return SCM_UNSPECIFIED; */
-/* } */
-/* #undef FUNC_NAME */
-
-
-/* SCM_DEFINE (scm_zmq_recv, "zmq-recv", 1, 1, 0, */
-/* 	    (SCM socket, SCM flags), */
-/* 	    "Receive a message from @var{socket}.") */
-/* #define FUNC_NAME s_scm_zmq_recv */
-/* {p */
-
 SCM_DEFINE (scm_nacl_rand_buf, "nacl-rand-buf", 1, 0, 0,
-	    (SCM len),
-	    "Returns a random buffer of length @var{len}.")
+            (SCM len),
+            "Returns a random buffer of length @var{len}.")
 #define FUNC_NAME s_scm_nacl_rand_buf
 {
+    SCM_VALIDATE_NUMBER(1,len);
     SCM buf = scm_c_make_bytevector (scm_to_size_t (len));
     randombytes_buf (SCM_BYTEVECTOR_CONTENTS (buf), scm_to_size_t (len));
 
@@ -370,7 +41,142 @@ SCM_DEFINE (scm_nacl_rand_buf, "nacl-rand-buf", 1, 0, 0,
 }
 #undef FUNC_NAME
 
+static int
+symbol_to_varaint (SCM style)
+{
+    int variant = -1;
+    if (SCM_UNBNDP (style))
+    {
+        variant = sodium_base64_VARIANT_ORIGINAL;
+    }
+    else if (scm_is_true
+        (scm_eq_p (style, scm_from_locale_symbol("VARIANT-ORIGINAL"))))
+    {
+        variant = sodium_base64_VARIANT_ORIGINAL;
+    }
+    else if (scm_is_true
+             (scm_eq_p (style, scm_from_locale_symbol("VARIANT-ORIGINAL-NO-PADDING"))))
+    {
+        variant = sodium_base64_VARIANT_ORIGINAL_NO_PADDING;
+    }
+    else if (scm_is_true
+             (scm_eq_p (style, scm_from_locale_symbol("VARIANT-URLSAFE"))))
+    {
+        variant = sodium_base64_VARIANT_URLSAFE;
+    }
+    else if (scm_is_true
+             (scm_eq_p (style, scm_from_locale_symbol("VARIANT-URLSAFE-NO-PADDING"))))
+    {
+        variant = sodium_base64_VARIANT_URLSAFE_NO_PADDING;
+    }
 
+    return variant;
+}
+
+SCM_DEFINE (scm_nacl_b64_encode, "nacl-encode-base64", 1, 1, 0,
+            (SCM buf, SCM style),
+    "Returns a base64 encoded string in the @var{style} provided")
+#define FUNC_NAME s_scm_nacl_b64_encode
+{
+    SCM_VALIDATE_BYTEVECTOR(1, buf);
+    int variant = symbol_to_varaint (style);
+    if (-1 == variant)
+        return SCM_BOOL_F;
+
+    size_t len = sodium_base64_ENCODED_LEN(SCM_BYTEVECTOR_LENGTH (buf), variant);
+
+    char *b64enc = malloc (len);
+    assert (b64enc);
+    memset (b64enc, 0, len);
+
+
+    b64enc = sodium_bin2base64(b64enc, len,
+                               (uint8_t *)SCM_BYTEVECTOR_CONTENTS (buf),
+                               SCM_BYTEVECTOR_LENGTH (buf),
+                               variant);
+
+    assert (b64enc);
+
+    return scm_take_locale_string (b64enc);
+}
+#undef FUNC_NAME
+
+SCM_DEFINE (scm_nacl_b64_decode, "nacl-decode-base64", 1, 1, 0,
+            (SCM encoded, SCM style),
+            "Returns a bytevector decoded from @var{style}")
+#define FUNC_NAME s_scm_nacl_b64_decode
+{
+
+    SCM_VALIDATE_STRING(1,encoded);
+    int variant = symbol_to_varaint (style);
+    if (-1 == variant)
+        return SCM_BOOL_F;
+
+    static const char * ignore = " \r\n";
+
+    size_t lenp;
+    char *c_encoded = scm_to_locale_stringn (encoded, &lenp);
+    if (!c_encoded)
+        return SCM_BOOL_F;
+
+    uint8_t *tmp = malloc (lenp);
+    assert (tmp);
+    memset(tmp, 0, lenp);
+
+    size_t bin_len;
+
+    int rc = sodium_base642bin(tmp, lenp,
+                               c_encoded, lenp,
+                               ignore, &bin_len,
+                               NULL, variant);
+
+    memset (c_encoded, 0, lenp);
+    free (c_encoded);
+    c_encoded = 0;
+
+    SCM result;
+    if (0 == rc)
+    {
+        result = scm_c_make_bytevector (bin_len);
+        memcpy (SCM_BYTEVECTOR_CONTENTS(result), tmp, bin_len);
+    }
+    else
+    {
+        result = SCM_BOOL_F;
+    }
+
+    memset (tmp, 0, lenp);
+    free (tmp);
+    tmp = 0;
+
+    return result;
+}
+
+
+
+#undef FUNC_NAME
+
+SCM_DEFINE (scm_nacl_hash_sha256, "nacl-hash-sha256", 1, 0, 0,
+            (SCM bv),
+            "Returns a bytevector of the sha256 of @var{bv}")
+#define FUNC_NAME s_scm_nacl_hash_sha256
+{
+    SCM_VALIDATE_BYTEVECTOR(1,bv);
+
+    SCM out = scm_c_make_bytevector (crypto_hash_sha256_BYTES);
+    if (0 != crypto_hash_sha256((uint8_t *)SCM_BYTEVECTOR_CONTENTS(out),
+                                (uint8_t *)SCM_BYTEVECTOR_CONTENTS(bv),
+                                SCM_BYTEVECTOR_LENGTH(bv)))
+    {
+        return SCM_BOOL_F;
+    }
+
+    return out;
+}
+
+
+
+#undef FUNC_NAME
 
 void
 scm_init_nacl (void)

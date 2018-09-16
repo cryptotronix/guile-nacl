@@ -7,8 +7,8 @@ extlib_LTLIBRARIES = libguile-nacl.la
 AM_CFLAGS = -I$(srcdir) $(WARN_CFLAGS) $(DEBUG_CFLAGS)
 
 libguile_nacl_la_SOURCES = guile-nacl.c
-libguile_nacl_la_CFLAGS = $(AM_CFLAGS) $(GUILE_CFLAGS)
-libguile_nacl_la_LIBADD = -lsodium $(GUILE_LIBS)
+libguile_nacl_la_CFLAGS = $(AM_CFLAGS) $(SODIUM_CFLAGS) $(GUILE_CFLAGS)
+libguile_nacl_la_LIBADD = $(SODIUM_LIBS) $(GUILE_LIBS)
 libguile_nacl_la_LDFLAGS = -export-dynamic -module -avoid-version
 
 noinst_HEADERS = guile-nacl.h

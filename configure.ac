@@ -18,9 +18,11 @@ AC_ARG_ENABLE([Werror], AC_HELP_STRING([--disable-Werror],[Don't stop the build 
         [], WARN_CFLAGS="-Wall -Werror")
 AC_SUBST(WARN_CFLAGS)
 
-PKG_CHECK_MODULES(GUILE, [guile-2.0 >= 2.0.0])
+PKG_CHECK_MODULES(GUILE, [guile-2.2 >= 2.2.0])
+PKG_CHECK_MODULES(SODIUM, [libsodium])
 
-AC_CHECK_LIB([libsodium], [nacl_init])
+GUILE_FLAGS
+GUILE_SITE_DIR
 
 AC_CONFIG_FILES(
 Makefile
