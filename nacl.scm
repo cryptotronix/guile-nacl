@@ -34,6 +34,7 @@
             nacl-rand-buf
             nacl-decode-base64
             nacl-encode-base64
-            nacl-hash-sha256))
+            nacl-hash-sha256
+            serial-term))
 
 (dynamic-call "scm_init_nacl" (dynamic-link *nacl-lib-path*))
